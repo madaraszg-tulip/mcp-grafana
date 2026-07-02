@@ -43,7 +43,7 @@ func newTestObservability(t *testing.T) *observability.Observability {
 func TestNewServer_SessionIdleTimeoutZeroDisablesReaping(t *testing.T) {
 	obs := newTestObservability(t)
 	synctest.Test(t, func(t *testing.T) {
-		_, _, sm := newServer("stdio", disabledTools{enabledTools: "search"}, obs, 0)
+		_, _, sm := newServer("stdio", disabledTools{enabledTools: "search"}, obs, 0, "")
 		defer sm.Close()
 
 		session := &testClientSession{id: "should-persist"}
@@ -151,10 +151,29 @@ func TestBuildInstructions_TimestampNote(t *testing.T) {
 	assert.Contains(t, instructions, "Timestamp parameters without a timezone offset are interpreted as UTC")
 }
 
+func TestAppendInstructions(t *testing.T) {
+	base := "This server provides access to your Grafana instance."
+
+	t.Run("empty extra is a no-op", func(t *testing.T) {
+		assert.Equal(t, base, appendInstructions(base, ""))
+	})
+	t.Run("whitespace-only extra is a no-op", func(t *testing.T) {
+		assert.Equal(t, base, appendInstructions(base, "   \n  "))
+	})
+	t.Run("non-empty extra is appended with separating newlines", func(t *testing.T) {
+		got := appendInstructions(base, "Log access is restricted; see https://example.tld")
+		assert.Equal(t, base+"\nLog access is restricted; see https://example.tld\n", got)
+	})
+	t.Run("surrounding whitespace is trimmed", func(t *testing.T) {
+		got := appendInstructions(base, "  NOTE  ")
+		assert.Equal(t, base+"\nNOTE\n", got)
+	})
+}
+
 func TestNewServer_SessionIdleTimeoutCustomValue(t *testing.T) {
 	obs := newTestObservability(t)
 	synctest.Test(t, func(t *testing.T) {
-		_, _, sm := newServer("stdio", disabledTools{enabledTools: "search"}, obs, 1)
+		_, _, sm := newServer("stdio", disabledTools{enabledTools: "search"}, obs, 1, "")
 		defer sm.Close()
 
 		session := &testClientSession{id: "custom-ttl"}
